@@ -1,6 +1,8 @@
 # depthai-android-jni-example (WIP)
- Android example to get the rgb and disparity images from the OAK-D device connected to a phone.
 
+Note that this integration is **community support only** and is **provided as-is**. We most likely **won't update it** and **we don't provide support** for it (Discord, forums, email...).
+
+Android example to get the rgb and disparity images from the OAK-D device connected to a phone. 
 
 https://user-images.githubusercontent.com/43162939/147094587-785c9df2-caa7-40bc-a7dc-c83ed5de41e2.mp4
 

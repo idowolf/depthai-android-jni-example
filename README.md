@@ -22,5 +22,4 @@ I have copied directly some of the include folders for some of the dependency li
 
 # References:
 - *depthai-core*: https://github.com/luxonis/depthai-core. To build the depthai library for Android, particularly, the *xlink_device_search_improvements* branch.
-- *Luxonis Community Discord*: https://discord.gg/tPczgVdk. Check there to get updates and other information about the products from Luxonis.
 - *Colormap function*: https://www.particleincell.com/2014/colormap. Used to draw the disparity by modifying the Short Rainbow example.

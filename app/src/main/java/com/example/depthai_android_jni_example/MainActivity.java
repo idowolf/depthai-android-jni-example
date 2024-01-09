@@ -1,5 +1,6 @@
 package com.example.depthai_android_jni_example;
 
+import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.os.Handler;
@@ -18,11 +19,16 @@ public class MainActivity extends AppCompatActivity {
         System.loadLibrary("depthai_android_jni_example");
     }
 
+    private static final String yolov3_model_path = "yolo-v3-tiny-tf.blob";
+    private static final String yolov4_model_path = "yolov4_tiny_coco_416x416_6shave.blob";
+    private static final String yolov5_model_path = "yolov5s_416_6shave.blob";
+    private static final String mobilenet_model_path = "mobilenet-ssd.blob";
+
     private ImageView rgbImageView, depthImageView;
     private Bitmap rgb_image, depth_image;
 
-    private static final int rgbWidth = 640;
-    private static final int rgbHeight = 480;
+    private static final int rgbWidth = 416;
+    private static final int rgbHeight = 416;
     private static final int disparityWidth = 640;
     private static final int disparityHeight = 400;
     private static final int framePeriod = 30;
@@ -68,13 +74,19 @@ public class MainActivity extends AppCompatActivity {
             if(running){
                 if(firstTime){
                     // Start the device
-                    startDevice(rgbWidth, rgbHeight);
+                    startDevice(yolov5_model_path, rgbWidth, rgbHeight);
                     firstTime = false;
                 }
 
                 int[] rgb = imageFromJNI();
                 if(rgb != null && rgb.length > 0) {
                     rgb_image.setPixels(rgb, 0, rgbWidth, 0, 0, rgbWidth, rgbHeight);
+                    rgbImageView.setImageBitmap(rgb_image);
+                }
+
+                int[] detections_img = detectionImageFromJNI();
+                if(detections_img != null && detections_img.length > 0) {
+                    rgb_image.setPixels(detections_img, 0, rgbWidth, 0, 0, rgbWidth, rgbHeight);
                     rgbImageView.setImageBitmap(rgb_image);
                 }
 
@@ -108,11 +120,14 @@ public class MainActivity extends AppCompatActivity {
         outState.putBoolean("firstTime", firstTime);
     }
 
+    public AssetManager getAssetManager() { return getAssets(); }
+
     /**
      * A native method that is implemented by the 'depthai_android_jni_example' native library,
      * which is packaged with this application.
      */
-    public native void startDevice(int rgbWidth, int rgbHeight);
+    public native void startDevice(String model_path, int rgbWidth, int rgbHeight);
     public native int[] imageFromJNI();
+    public native int[] detectionImageFromJNI();
     public native int[] depthFromJNI();
 }

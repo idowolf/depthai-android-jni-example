@@ -37,6 +37,7 @@ struct DeviceInfo {
     XLinkDeviceState_t state = X_LINK_ANY_STATE;
     XLinkProtocol_t protocol = X_LINK_ANY_PROTOCOL;
     XLinkPlatform_t platform = X_LINK_ANY_PLATFORM;
+    XLinkError_t status = X_LINK_SUCCESS;
 };
 
 /**
@@ -45,9 +46,9 @@ struct DeviceInfo {
 class XLinkConnection {
    public:
     // static API
-    static std::vector<DeviceInfo> getAllConnectedDevices(XLinkDeviceState_t state = X_LINK_ANY_STATE);
-    static std::tuple<bool, DeviceInfo> getFirstDevice(XLinkDeviceState_t state = X_LINK_ANY_STATE);
-    static std::tuple<bool, DeviceInfo> getDeviceByMxId(std::string, XLinkDeviceState_t state = X_LINK_ANY_STATE);
+    static std::vector<DeviceInfo> getAllConnectedDevices(XLinkDeviceState_t state = X_LINK_ANY_STATE, bool skipInvalidDevices = true);
+    static std::tuple<bool, DeviceInfo> getFirstDevice(XLinkDeviceState_t state = X_LINK_ANY_STATE, bool skipInvalidDevices = true);
+    static std::tuple<bool, DeviceInfo> getDeviceByMxId(std::string, XLinkDeviceState_t state = X_LINK_ANY_STATE, bool skipInvalidDevice = true);
     static DeviceInfo bootBootloader(const DeviceInfo& devInfo);
 
     XLinkConnection(const DeviceInfo& deviceDesc, std::vector<std::uint8_t> mvcmdBinary, XLinkDeviceState_t expectedState = X_LINK_BOOTED);

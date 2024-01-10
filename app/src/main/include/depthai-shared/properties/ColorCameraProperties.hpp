@@ -1,7 +1,11 @@
 #pragma once
 
+#include <vector>
+
 #include "depthai-shared/common/CameraBoardSocket.hpp"
 #include "depthai-shared/common/CameraImageOrientation.hpp"
+#include "depthai-shared/common/FrameEvent.hpp"
+#include "depthai-shared/common/optional.hpp"
 #include "depthai-shared/datatype/RawCameraControl.hpp"
 #include "depthai-shared/properties/Properties.hpp"
 
@@ -25,7 +29,36 @@ struct ColorCameraProperties : PropertiesSerializable<Properties, ColorCameraPro
     /**
      * Select the camera sensor resolution
      */
-    enum class SensorResolution : int32_t { THE_1080_P, THE_4_K, THE_12_MP, THE_13_MP };
+    enum class SensorResolution : int32_t {
+        /// 1920 × 1080
+        THE_1080_P,
+        /// 3840 × 2160
+        THE_4_K,
+        /// 4056 × 3040
+        THE_12_MP,
+        /// 4208 × 3120
+        THE_13_MP,
+        /// 1280 × 720
+        THE_720_P,
+        /// 1280 × 800
+        THE_800_P,
+        /// 1920 × 1200
+        THE_1200_P,
+        /// 2592 × 1944
+        THE_5_MP,
+        /// 4000 × 3000
+        THE_4000X3000,
+        /// 5312 × 6000
+        THE_5312X6000,
+        /// 8000 × 6000
+        THE_48_MP,
+        /// 1440 × 1080
+        THE_1440X1080,
+        /// 1352 × 1012
+        THE_1352X1012,
+        /// 2024 × 1520
+        THE_2024X1520,
+    };
 
     /**
      * For 24 bit color these can be either RGB or BGR
@@ -41,6 +74,11 @@ struct ColorCameraProperties : PropertiesSerializable<Properties, ColorCameraPro
      * Which socket will color camera use
      */
     CameraBoardSocket boardSocket = CameraBoardSocket::AUTO;
+
+    /**
+     * Which camera name will color camera use
+     */
+    std::string cameraName = "";
 
     /**
      * Camera sensor image orientation / pixel readout
@@ -99,6 +137,16 @@ struct ColorCameraProperties : PropertiesSerializable<Properties, ColorCameraPro
     float fps = 30.0;
 
     /**
+     * Isp 3A rate (auto focus, auto exposure, auto white balance, camera controls etc.).
+     * Default (0) matches the camera FPS, meaning that 3A is running on each frame.
+     * Reducing the rate of 3A reduces the CPU usage on CSS, but also increases the convergence rate of 3A.
+     * Note that camera controls will be processed at this rate. E.g. if camera is running at 30 fps, and camera control is sent at every frame,
+     * but 3A fps is set to 15, the camera control messages will be processed at 15 fps rate, which will lead to queueing.
+
+     */
+    int isp3aFps = 0;
+
+    /**
      * Initial sensor crop, -1 signifies center crop
      */
     float sensorCropX = AUTO;
@@ -113,11 +161,37 @@ struct ColorCameraProperties : PropertiesSerializable<Properties, ColorCameraPro
      * Configure scaling for `isp` output.
      */
     IspScale ispScale;
+
+    /**
+     * Pool sizes
+     */
+    int numFramesPoolRaw = 3;
+    int numFramesPoolIsp = 3;
+    int numFramesPoolVideo = 4;
+    int numFramesPoolPreview = 4;
+    int numFramesPoolStill = 4;
+
+    /**
+     * List of events to receive, the rest will be ignored
+     */
+    std::vector<dai::FrameEvent> eventFilter = {dai::FrameEvent::READOUT_START};
+
+    /**
+     * Configures whether the camera `raw` frames are saved as MIPI-packed to memory.
+     * The packed format is more efficient, consuming less memory on device, and less data
+     * to send to host: RAW10: 4 pixels saved on 5 bytes, RAW12: 2 pixels saved on 3 bytes.
+     * When packing is disabled (`false`), data is saved lsb-aligned, e.g. a RAW10 pixel
+     * will be stored as uint16, on bits 9..0: 0b0000'00pp'pppp'pppp.
+     * Default is auto: enabled for standard color/monochrome cameras where ISP can work
+     * with both packed/unpacked, but disabled for other cameras like ToF.
+     */
+    tl::optional<bool> rawPacked;
 };
 
 DEPTHAI_SERIALIZE_EXT(ColorCameraProperties,
                       initialControl,
                       boardSocket,
+                      cameraName,
                       imageOrientation,
                       colorOrder,
                       interleaved,
@@ -130,9 +204,16 @@ DEPTHAI_SERIALIZE_EXT(ColorCameraProperties,
                       stillHeight,
                       resolution,
                       fps,
+                      isp3aFps,
                       sensorCropX,
                       sensorCropY,
                       previewKeepAspectRatio,
-                      ispScale);
+                      ispScale,
+                      numFramesPoolRaw,
+                      numFramesPoolIsp,
+                      numFramesPoolVideo,
+                      numFramesPoolPreview,
+                      numFramesPoolStill,
+                      rawPacked);
 
 }  // namespace dai

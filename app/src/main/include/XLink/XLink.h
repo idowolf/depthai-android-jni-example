@@ -39,6 +39,13 @@ XLinkError_t XLinkInitialize(XLinkGlobalHandler_t* globalHandler);
 int XLinkIsDescriptionValid(const deviceDesc_t *in_deviceDesc, const XLinkDeviceState_t state);
 
 /**
+ * @brief Checks if protocol was initialized
+ * @param[in]   protocol - protocol to check if it is initialized
+ * @return Result of checking: (1) protocol was initialized, otherwise (0)
+ */
+int XLinkIsProtocolInitialized(const XLinkProtocol_t protocol);
+
+/**
  * @brief Returns Myriad device description which meets the requirements
  * @param[in]   in_deviceRequirements - structure with device requirements (protocol, platform).
  * @note        If in_deviceRequirements has device name specified,
@@ -63,6 +70,23 @@ XLinkError_t XLinkFindAllSuitableDevices(const deviceDesc_t in_deviceRequirement
                                          deviceDesc_t *out_foundDevicesPtr,
                                          const unsigned int devicesArraySize,
                                          unsigned int *out_foundDevicesCount);
+
+/**
+ * @brief Returns all Myriad devices description which meets the requirements
+ * @param[in]      state - state of device enum (booted, not booted or any state)
+ * @param[in]      in_deviceRequirements - structure with device requirements (protocol, platform).
+ * @param[in,out]  out_foundDevicesPtr - pointer to array with all found devices descriptions
+ * @param[out]     devicesArraySize - size of out_foundDevicesPtr
+ * @param[out]     out_foundDevicesCount - amount of found devices
+ * @param[in]     timeoutMs - for how long to search for. -1 forever, 0 one iteration only.
+ * @param[in]     cb - callback with current set of devices for each iteration
+ * @return Status code of the operation: X_LINK_SUCCESS (0) for success
+ */
+XLinkError_t XLinkSearchForDevices(const deviceDesc_t in_deviceRequirements,
+                                         deviceDesc_t *out_foundDevicesPtr,
+                                         const unsigned int devicesArraySize,
+                                         unsigned int *out_foundDevicesCount, int timeoutMs, bool (*cb)(deviceDesc_t*, unsigned int));
+
 
 /**
  * @brief Connects to specific device, starts dispatcher and pings remote
@@ -123,12 +147,6 @@ XLinkError_t XLinkResetRemote(linkId_t id);
 XLinkError_t XLinkResetRemoteTimeout(linkId_t id, int timeoutMs);
 
 /**
- * @brief Closes all and release all memory
- * @return Status code of the operation: X_LINK_SUCCESS (0) for success
- */
-XLinkError_t XLinkResetAll();
-
-/**
  * @brief Retrieves USB speed of certain connected device
  * @return UsbSpeed_t enum describing the usb connection speed
  */
@@ -174,11 +192,14 @@ const char* XLinkPCIEBootloaderToStr(XLinkPCIEBootloader val);
 
 /**
  * @brief Profiling funcs - keeping them global for now
+ * Invalid to be called if XLink was not yet initialized
  * @return Status code of the operation: X_LINK_SUCCESS (0) for success
  */
 XLinkError_t XLinkProfStart();
 XLinkError_t XLinkProfStop();
 XLinkError_t XLinkProfPrint();
+XLinkError_t XLinkGetGlobalProfilingData(XLinkProf_t* prof);
+XLinkError_t XLinkGetProfilingData(linkId_t id, XLinkProf_t* prof);
 
 
 // ------------------------------------
@@ -343,8 +364,12 @@ XLinkError_t XLinkAsyncWriteData();
 XLinkError_t XLinkSetDeviceOpenTimeOutMsec(unsigned int msec);
 XLinkError_t XLinkSetCommonTimeOutMsec(unsigned int msec);
 
-// unsafe
-XLinkError_t XLinkGetFillLevel(streamId_t const streamId, int isRemote, int* fillLevel);
+/**
+ * Deprecated - issues
+ * @brief Closes all and release all memory
+ * @return Status code of the operation: X_LINK_SUCCESS (0) for success
+ */
+XLinkError_t XLinkResetAll();
 
 #endif // __DEVICE__
 

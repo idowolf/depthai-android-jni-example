@@ -8,14 +8,14 @@
 #include <cstdint>
 
 // libraries
-#include "nlohmann/json.hpp"
+#include "NlohmannJsonCompat.hpp"
 
 #define DEPTHAI_BOOTLOADER_NLOHMANN_JSON_OPTIONAL_TO(v1) nlohmann::to_json(nlohmann_json_j[#v1], nlohmann_json_t.v1);
 #define DEPTHAI_BOOTLOADER_NLOHMANN_JSON_OPTIONAL_FROM(v1) if(nlohmann_json_j.contains(#v1)) nlohmann_json_j[#v1].get_to(nlohmann_json_t.v1);
 
 #define DEPTHAI_BOOTLOADER_NLOHMANN_DEFINE_TYPE_OPTIONAL_NON_INTRUSIVE(Type, ...)  \
-    inline void to_json(nlohmann::json& nlohmann_json_j, const Type& nlohmann_json_t) { NLOHMANN_JSON_EXPAND(NLOHMANN_JSON_PASTE(DEPTHAI_BOOTLOADER_NLOHMANN_JSON_OPTIONAL_TO, __VA_ARGS__)) } \
-    inline void from_json(const nlohmann::json& nlohmann_json_j, Type& nlohmann_json_t) { NLOHMANN_JSON_EXPAND(NLOHMANN_JSON_PASTE(DEPTHAI_BOOTLOADER_NLOHMANN_JSON_OPTIONAL_FROM, __VA_ARGS__)) }
+    inline void to_json(nlohmann::json& nlohmann_json_j, const Type& nlohmann_json_t) { DEPTHAI_BOOTLOADER_NLOHMANN_JSON_EXPAND(DEPTHAI_BOOTLOADER_NLOHMANN_JSON_PASTE(DEPTHAI_BOOTLOADER_NLOHMANN_JSON_OPTIONAL_TO, __VA_ARGS__)) } \
+    inline void from_json(const nlohmann::json& nlohmann_json_j, Type& nlohmann_json_t) { DEPTHAI_BOOTLOADER_NLOHMANN_JSON_EXPAND(DEPTHAI_BOOTLOADER_NLOHMANN_JSON_PASTE(DEPTHAI_BOOTLOADER_NLOHMANN_JSON_OPTIONAL_FROM, __VA_ARGS__)) }
 
 namespace dai
 {
@@ -74,8 +74,10 @@ struct Config {
     Memory appMem = Memory::AUTO;
     UsbConfig usb;
     NetworkConfig network;
+    uint32_t userBlSize = 0;
+    uint32_t userBlChecksum = 0;
 };
-DEPTHAI_BOOTLOADER_NLOHMANN_DEFINE_TYPE_OPTIONAL_NON_INTRUSIVE(Config, appMem, usb, network);
+DEPTHAI_BOOTLOADER_NLOHMANN_DEFINE_TYPE_OPTIONAL_NON_INTRUSIVE(Config, appMem, usb, network, userBlSize, userBlChecksum);
 
 } // namespace bootloader
 } // namespace dai

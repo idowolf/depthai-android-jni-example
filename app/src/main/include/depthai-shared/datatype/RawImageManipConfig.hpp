@@ -7,6 +7,8 @@
 #include "depthai-shared/datatype/RawBuffer.hpp"
 
 // shared
+#include "depthai-shared/common/Colormap.hpp"
+#include "depthai-shared/common/Interpolation.hpp"
 #include "depthai-shared/common/Point2f.hpp"
 #include "depthai-shared/common/RotatedRect.hpp"
 #include "depthai-shared/common/Size2f.hpp"
@@ -86,10 +88,14 @@ struct RawImageManipConfig : public RawBuffer {
     };
 
     struct FormatConfig {
-        RawImgFrame::Type type = RawImgFrame::Type::RGB888p;
+        RawImgFrame::Type type = RawImgFrame::Type::NONE;
         bool flipHorizontal = false;
+        bool flipVertical = false;
+        Colormap colormap = Colormap::NONE;
+        int colormapMin = 0;
+        int colormapMax = 255;
 
-        DEPTHAI_SERIALIZE(FormatConfig, type, flipHorizontal);
+        DEPTHAI_SERIALIZE(FormatConfig, type, flipHorizontal, flipVertical, colormap, colormapMin, colormapMax);
     };
 
     CropConfig cropConfig;
@@ -105,13 +111,28 @@ struct RawImageManipConfig : public RawBuffer {
     bool reusePreviousImage = false;
     bool skipCurrentImage = false;
 
+    /// Interpolation type to use
+    Interpolation interpolation = Interpolation::AUTO;
+
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::ImageManipConfig;
     };
 
-    DEPTHAI_SERIALIZE(
-        RawImageManipConfig, cropConfig, resizeConfig, formatConfig, enableCrop, enableResize, enableFormat, reusePreviousImage, skipCurrentImage);
+    DatatypeEnum getType() const override {
+        return DatatypeEnum::ImageManipConfig;
+    }
+
+    DEPTHAI_SERIALIZE(RawImageManipConfig,
+                      cropConfig,
+                      resizeConfig,
+                      formatConfig,
+                      enableCrop,
+                      enableResize,
+                      enableFormat,
+                      reusePreviousImage,
+                      skipCurrentImage,
+                      interpolation);
 };
 
 }  // namespace dai

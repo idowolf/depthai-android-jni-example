@@ -52,12 +52,16 @@ struct StereoDepthProperties : PropertiesSerializable<Properties, StereoDepthPro
      */
     CameraBoardSocket depthAlignCamera = CameraBoardSocket::AUTO;
 
+    /**
+     * Enable stereo rectification/dewarp or not.
+     * Useful to disable when replaying pre-recorded rectified frames.
+     */
     bool enableRectification = true;
 
     /**
      * Fill color for missing data at frame edges - grayscale 0..255, or -1 to replicate pixels
      */
-    std::int32_t rectifyEdgeFillColor = -1;
+    std::int32_t rectifyEdgeFillColor = 0;
     /**
      * Input frame width. Optional (taken from MonoCamera nodes if they exist)
      */
@@ -104,6 +108,7 @@ struct StereoDepthProperties : PropertiesSerializable<Properties, StereoDepthPro
      * 0 means that it will reuse the shave assigned for main stereo algorithm.
      * For optimal performance it's recommended to allocate more than 0,
      * so post processing will run in parallel with main stereo algorithm.
+     * Minimum 1, maximum 10.
      */
     std::int32_t numPostProcessingShaves = AUTO;
 
@@ -113,15 +118,70 @@ struct StereoDepthProperties : PropertiesSerializable<Properties, StereoDepthPro
      * 0 means that it will reuse the memory slices assigned for main stereo algorithm.
      * For optimal performance it's recommended to allocate more than 0,
      * so post processing will run in parallel with main stereo algorithm.
+     * Minimum 1, maximum 6.
      */
     std::int32_t numPostProcessingMemorySlices = AUTO;
 
     /**
-     * Whether to use focal length from calibration intrinsics or calculate based on calibration FOV.
-     * Default behaviour is AUTO, for fisheye lenses focal length is taken from calibration intrinsics,
-     * otherwise calculated from FOV and image resolution: focalLength = calib.width / (2.f * tan(calib.fov / 2 / 180.f * pi));
+     * Whether to use horizontal focal length from calibration intrinsics (fx) or calculate based on calibration FOV.
+     * Default value is true.
+     * If set to false it's calculated from FOV and image resolution: focalLength = calib.width / (2.f * tan(calib.fov / 2 / 180.f * pi));
      */
-    tl::optional<bool> focalLengthFromCalibration;
+    bool focalLengthFromCalibration = true;
+
+    /**
+     * Use 3x3 homography matrix for stereo rectification instead of sparse mesh generated on device.
+     * Default behaviour is AUTO, for lenses with FOV over 85 degrees sparse mesh is used, otherwise 3x3 homography.
+     * If custom mesh data is provided through loadMeshData or loadMeshFiles this option is ignored.
+     * true: 3x3 homography matrix generated from calibration data is used for stereo rectification, can't correct lens
+     * distortion.
+     * false: sparse mesh is generated on-device from calibration data with mesh step specified with setMeshStep (Default: (16, 16)), can correct lens
+     * distortion. Implementation for generating the mesh is same as opencv's initUndistortRectifyMap function. Only the first 8 distortion coefficients are
+     * used from calibration data.
+     */
+    tl::optional<bool> useHomographyRectification;
+
+    /**
+     * Override baseline from calibration.
+     * Used only in disparity to depth conversion.
+     * Units are centimeters.
+     */
+    tl::optional<float> baseline;
+
+    /**
+     * Override focal length from calibration.
+     * Used only in disparity to depth conversion.
+     * Units are pixels.
+     */
+    tl::optional<float> focalLength;
+
+    /**
+     * Use baseline information for disparity to depth conversion from specs (design data) or from calibration.
+     * Suitable for debugging. Utilizes calibrated value as default
+     */
+    tl::optional<bool> disparityToDepthUseSpecTranslation = tl::nullopt;
+
+    /**
+     * Obtain rectification matrices using spec translation (design data) or from calibration in calculations.
+     * Suitable for debugging.
+     * Default: false
+     */
+    tl::optional<bool> rectificationUseSpecTranslation = tl::nullopt;
+
+    /**
+     * Use baseline information for depth alignment from specs (design data) or from calibration.
+     * Suitable for debugging. Utilizes calibrated value as default
+     */
+    tl::optional<bool> depthAlignmentUseSpecTranslation = tl::nullopt;
+
+    /**
+     * Free scaling parameter between 0 (when all the pixels in the undistorted image are valid)
+     * and 1 (when all the source image pixels are retained in the undistorted image).
+     * On some high distortion lenses, and/or due to rectification (image rotated) invalid areas may appear even with alpha=0,
+     * in these cases alpha < 0.0 helps removing invalid areas.
+     * See getOptimalNewCameraMatrix from opencv for more details.
+     */
+    tl::optional<float> alphaScaling;
 };
 
 DEPTHAI_SERIALIZE_EXT(StereoDepthProperties,
@@ -139,6 +199,13 @@ DEPTHAI_SERIALIZE_EXT(StereoDepthProperties,
                       numFramesPool,
                       numPostProcessingShaves,
                       numPostProcessingMemorySlices,
-                      focalLengthFromCalibration);
+                      focalLengthFromCalibration,
+                      useHomographyRectification,
+                      baseline,
+                      focalLength,
+                      disparityToDepthUseSpecTranslation,
+                      rectificationUseSpecTranslation,
+                      depthAlignmentUseSpecTranslation,
+                      alphaScaling);
 
 }  // namespace dai

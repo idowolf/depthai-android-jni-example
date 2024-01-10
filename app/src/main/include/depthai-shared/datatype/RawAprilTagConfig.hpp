@@ -14,7 +14,7 @@ struct RawAprilTagConfig : public RawBuffer {
     /**
      * Supported AprilTag families.
      */
-    enum class Family : std::int32_t { TAG_36H11 = 0, TAG_36H10, TAG_25H9, TAG_16H5, TAG_CIR21H7, TAG_CIR49H12, TAG_CUST48H12, TAG_STAND41H12, TAG_STAND52H13 };
+    enum class Family : std::int32_t { TAG_36H11 = 0, TAG_36H10, TAG_25H9, TAG_16H5, TAG_CIR21H7, TAG_STAND41H12 };
 
     /**
      * AprilTag family.
@@ -114,6 +114,10 @@ struct RawAprilTagConfig : public RawBuffer {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::AprilTagConfig;
     };
+
+    DatatypeEnum getType() const override {
+        return DatatypeEnum::AprilTagConfig;
+    }
 
     DEPTHAI_SERIALIZE(RawAprilTagConfig, family, quadDecimate, quadSigma, refineEdges, decodeSharpening, maxHammingDistance, quadThresholds);
 };

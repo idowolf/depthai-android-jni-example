@@ -16,7 +16,7 @@ namespace dai {
  *
  * Contains configuration data, average depth for the calculated ROI on depth map.
  * Together with spatial coordinates: x,y,z relative to the center of depth map.
- * Units are in millimeters.
+ * Units are in depth units (millimeter by default).
  */
 struct SpatialLocations {
     /**
@@ -24,19 +24,32 @@ struct SpatialLocations {
      */
     SpatialLocationCalculatorConfigData config;
     /**
-     *  Average of depth values inside the ROI between the specified thresholds in config
+     *  Average of depth values inside the ROI between the specified thresholds in config.
+     *  Calculated only if calculation method is set to AVERAGE or MIN oR MAX.
      */
     float depthAverage = 0.f;
     /**
-     *  Minimum of depth values inside the ROI between the specified thresholds in config
+     *  Most frequent of depth values inside the ROI between the specified thresholds in config.
+     * Calculated only if calculation method is set to MODE.
+     */
+    float depthMode = 0.f;
+    /**
+     *  Median of depth values inside the ROI between the specified thresholds in config.
+     * Calculated only if calculation method is set to MEDIAN.
+     */
+    float depthMedian = 0.f;
+    /**
+     *  Minimum of depth values inside the ROI between the specified thresholds in config.
+     * Calculated only if calculation method is set to AVERAGE or MIN oR MAX.
      */
     std::uint16_t depthMin = 0;
     /**
-     *  Maximum of depth values inside the ROI between the specified thresholds in config
+     *  Maximum of depth values inside the ROI between the specified thresholds in config.
+     * Calculated only if calculation method is set to AVERAGE or MIN oR MAX.
      */
     std::uint16_t depthMax = 0;
     /**
-     *  Number of depth values used to calculate depthAverage based on config
+     *  Number of depth values used in calculations.
      */
     std::uint32_t depthAveragePixelCount = 0;
     /**
@@ -44,7 +57,7 @@ struct SpatialLocations {
      */
     Point3f spatialCoordinates;
 };
-DEPTHAI_SERIALIZE_EXT(SpatialLocations, config, depthAverage, depthMin, depthMax, depthAveragePixelCount, spatialCoordinates);
+DEPTHAI_SERIALIZE_EXT(SpatialLocations, config, depthAverage, depthMode, depthMedian, depthMin, depthMax, depthAveragePixelCount, spatialCoordinates);
 
 /// RawSpatialLocations structure
 struct RawSpatialLocations : public RawBuffer {
@@ -55,7 +68,11 @@ struct RawSpatialLocations : public RawBuffer {
         datatype = DatatypeEnum::SpatialLocationCalculatorData;
     };
 
-    DEPTHAI_SERIALIZE(RawSpatialLocations, spatialLocations);
+    DatatypeEnum getType() const override {
+        return DatatypeEnum::SpatialLocationCalculatorData;
+    }
+
+    DEPTHAI_SERIALIZE(RawSpatialLocations, spatialLocations, RawBuffer::sequenceNum, RawBuffer::ts, RawBuffer::tsDevice);
 };
 
 }  // namespace dai

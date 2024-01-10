@@ -3,16 +3,12 @@
 #include <depthai-shared/common/optional.hpp>
 #include <vector>
 
+#include "depthai-shared/common/MedianFilter.hpp"
 #include "depthai-shared/datatype/DatatypeEnum.hpp"
 #include "depthai-shared/datatype/RawBuffer.hpp"
 #include "depthai-shared/utility/Serialization.hpp"
 
 namespace dai {
-
-/**
- * Median filter config for disparity post-processing
- */
-enum class MedianFilter : int32_t { MEDIAN_OFF = 0, KERNEL_3x3 = 3, KERNEL_5x5 = 5, KERNEL_7x7 = 7 };
 
 /// RawStereoDepthConfig configuration structure
 struct RawStereoDepthConfig : public RawBuffer {
@@ -25,9 +21,26 @@ struct RawStereoDepthConfig : public RawBuffer {
         enum class DepthAlign : int32_t { RECTIFIED_RIGHT, RECTIFIED_LEFT, CENTER };
 
         /**
+         * Measurement unit for depth data
+         */
+        enum class DepthUnit : int32_t { METER, CENTIMETER, MILLIMETER, INCH, FOOT, CUSTOM };
+
+        /**
          * Set the disparity/depth alignment to the perspective of a rectified output, or center it
          */
         DepthAlign depthAlign = DepthAlign::RECTIFIED_RIGHT;
+
+        /**
+         * Measurement unit for depth data.
+         * Depth data is integer value, multiple of depth unit.
+         */
+        DepthUnit depthUnit = DepthUnit::MILLIMETER;
+
+        /**
+         * Custom depth unit multiplier, if custom depth unit is enabled, relative to 1 meter.
+         * A multiplier of 1000 effectively means depth unit in millimeter.
+         */
+        float customDepthUnitMultiplier = 1000.f;
 
         /**
          * Computes and combines disparities in both L-R and R-L directions, and combine them.
@@ -64,7 +77,50 @@ struct RawStereoDepthConfig : public RawBuffer {
          */
         std::int32_t subpixelFractionalBits = 3;
 
-        DEPTHAI_SERIALIZE(AlgorithmControl, depthAlign, enableLeftRightCheck, enableExtended, enableSubpixel, leftRightCheckThreshold, subpixelFractionalBits);
+        /**
+         * Shift input frame by a number of pixels to increase minimum depth.
+         * For example shifting by 48 will change effective disparity search range from (0,95] to [48,143].
+         * An alternative approach to reducing the minZ.
+         * We normally only recommend doing this when it is known that there will be no objects
+         * farther away than MaxZ, such as having a depth camera mounted above a table
+         * pointing down at the table surface.
+         */
+        std::int32_t disparityShift = 0;
+
+        /**
+         * Used only for debug purposes. centerAlignmentShiftFactor is set automatically in firmware,
+         * from camera extrinsics when depth alignment to camera is enabled.
+         * Center alignment is achieved by shifting the obtained disparity map by a scale factor.
+         * It's used to align to a different camera that is on the same horizontal baseline as the two stereo cameras.
+         * E.g. if we have a device with 10 cm stereo baseline, and we have another camera inbetween,
+         * 9cm from the LEFT camera and 1 cm from the RIGHT camera we can align the obtained disparity map using a scale factor of 0.9.
+         * Note that aligning disparity map to a different camera involves 2 steps:
+         * 1. Shifting obtained disparity map.
+         * 2. Warping the image to counter rotate and scaling to match the FOV.
+         * Center alignment factor 1 is equivalent to RECTIFIED_RIGHT
+         * Center alignment factor 0 is equivalent to RECTIFIED_LEFT
+         */
+        tl::optional<float> centerAlignmentShiftFactor;
+
+        /**
+         * Invalidate X amount of pixels at the edge of disparity frame.
+         * For right and center alignment X pixels will be invalidated from the right edge,
+         * for left alignment from the left edge.
+         */
+        std::int32_t numInvalidateEdgePixels = 0;
+
+        DEPTHAI_SERIALIZE(AlgorithmControl,
+                          depthAlign,
+                          depthUnit,
+                          customDepthUnitMultiplier,
+                          enableLeftRightCheck,
+                          enableExtended,
+                          enableSubpixel,
+                          leftRightCheckThreshold,
+                          subpixelFractionalBits,
+                          disparityShift,
+                          centerAlignmentShiftFactor,
+                          numInvalidateEdgePixels);
     };
 
     /**
@@ -121,7 +177,7 @@ struct RawStereoDepthConfig : public RawBuffer {
             std::int32_t delta = 0;
 
             /**
-             * Nubmer of iterations over the image in both horizontal and vertical direction.
+             * Number of iterations over the image in both horizontal and vertical direction.
              */
             std::int32_t numIterations = 1;
 
@@ -135,7 +191,6 @@ struct RawStereoDepthConfig : public RawBuffer {
 
         /**
          * Temporal filtering with optional persistence.
-         * More details about the filter can be found here:
          */
         struct TemporalFilter {
             static constexpr const std::int32_t DEFAULT_DELTA_VALUE = 3;
@@ -186,7 +241,6 @@ struct RawStereoDepthConfig : public RawBuffer {
 
         /**
          * Temporal filtering with optional persistence.
-         * More details about the filter can be found here:
          */
         TemporalFilter temporalFilter;
 
@@ -196,12 +250,12 @@ struct RawStereoDepthConfig : public RawBuffer {
          */
         struct ThresholdFilter {
             /**
-             * Minimum range in millimeters.
+             * Minimum range in depth units.
              * Depth values under this value are invalidated.
              */
             std::int32_t minRange = 0;
             /**
-             * Maximum range in millimeters.
+             * Maximum range in depth units.
              * Depth values over this value are invalidated.
              */
             std::int32_t maxRange = 65535;
@@ -214,6 +268,35 @@ struct RawStereoDepthConfig : public RawBuffer {
          * Filters out distances outside of a given interval.
          */
         ThresholdFilter thresholdFilter;
+
+        /**
+         * Brightness filtering.
+         * If input frame pixel is too dark or too bright, disparity will be invalidated.
+         * The idea is that for too dark/too bright pixels we have low confidence,
+         * since that area was under/over exposed and details were lost.
+         */
+        struct BrightnessFilter {
+            /**
+             * Minimum pixel brightness.
+             * If input pixel is less or equal than this value the depth value is invalidated.
+             */
+            std::int32_t minBrightness = 0;
+            /**
+             * Maximum range in depth units.
+             * If input pixel is less or equal than this value the depth value is invalidated.
+             */
+            std::int32_t maxBrightness = 256;
+
+            DEPTHAI_SERIALIZE(BrightnessFilter, minBrightness, maxBrightness);
+        };
+
+        /**
+         * Brightness filtering.
+         * If input frame pixel is too dark or too bright, disparity will be invalidated.
+         * The idea is that for too dark/too bright pixels we have low confidence,
+         * since that area was under/over exposed and details were lost.
+         */
+        BrightnessFilter brightnessFilter;
 
         /**
          * Speckle filtering.
@@ -271,7 +354,8 @@ struct RawStereoDepthConfig : public RawBuffer {
          */
         DecimationFilter decimationFilter;
 
-        DEPTHAI_SERIALIZE(PostProcessing, median, bilateralSigmaValue, spatialFilter, temporalFilter, thresholdFilter, speckleFilter, decimationFilter);
+        DEPTHAI_SERIALIZE(
+            PostProcessing, median, bilateralSigmaValue, spatialFilter, temporalFilter, thresholdFilter, brightnessFilter, speckleFilter, decimationFilter);
     };
 
     /**
@@ -450,6 +534,10 @@ struct RawStereoDepthConfig : public RawBuffer {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::StereoDepthConfig;
     };
+
+    DatatypeEnum getType() const override {
+        return DatatypeEnum::StereoDepthConfig;
+    }
 
     DEPTHAI_SERIALIZE(RawStereoDepthConfig, algorithmControl, postProcessing, censusTransform, costMatching, costAggregation);
 };

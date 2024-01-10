@@ -29,6 +29,12 @@ namespace request {
         SET_BOOTLOADER_CONFIG,
         GET_BOOTLOADER_CONFIG,
         BOOTLOADER_MEMORY,
+        GET_BOOTLOADER_COMMIT,
+        UPDATE_FLASH_BOOT_HEADER,
+        READ_FLASH,
+        GET_APPLICATION_DETAILS,
+        GET_MEMORY_DETAILS,
+        IS_USER_BOOTLOADER,
     };
 
     struct BaseRequest {
@@ -172,6 +178,80 @@ namespace request {
         static constexpr const char* NAME = "BootloaderMemory";
     };
 
+    // 0.0.18
+    struct GetBootloaderCommit : BaseRequest {
+        // Common
+        GetBootloaderCommit() : BaseRequest(GET_BOOTLOADER_COMMIT) {}
+
+        // Data
+
+        static constexpr const char* VERSION = "0.0.18";
+        static constexpr const char* NAME = "GetBootloaderCommit";
+    };
+
+
+    // 0.0.19
+    struct UpdateFlashBootHeader : BaseRequest {
+        // Common
+        UpdateFlashBootHeader() : BaseRequest(UPDATE_FLASH_BOOT_HEADER) {}
+
+        // Data
+        enum Type : int32_t { GPIO_MODE = 0, USB_RECOVERY, NORMAL, FAST };
+
+        Type type;
+        int64_t offset = -1;
+        int64_t location = -1;
+        int32_t dummyCycles = -1;
+        int32_t frequency = -1;
+        int32_t gpioMode = -1;
+
+
+        static constexpr const char* VERSION = "0.0.19";
+        static constexpr const char* NAME = "UpdateFlashBootHeader";
+    };
+
+    struct ReadFlash : BaseRequest {
+        // Common
+        ReadFlash() : BaseRequest(READ_FLASH) {}
+
+        // Data
+        Memory memory = Memory::AUTO;
+        uint32_t offset = 0;
+        uint32_t totalSize = 0;
+
+        static constexpr const char* VERSION = "0.0.19";
+        static constexpr const char* NAME = "ReadFlash";
+    };
+
+    struct GetApplicationDetails : BaseRequest {
+        // Common
+        GetApplicationDetails() : BaseRequest(GET_APPLICATION_DETAILS) {}
+
+        // Data
+        Memory memory = Memory::FLASH;
+
+        static constexpr const char* VERSION = "0.0.19";
+        static constexpr const char* NAME = "GetApplicationDetails";
+    };
+
+    struct GetMemoryDetails : BaseRequest {
+        // Common
+        GetMemoryDetails() : BaseRequest(GET_MEMORY_DETAILS) {}
+
+        // Data
+        Memory memory = Memory::FLASH;
+
+        static constexpr const char* VERSION = "0.0.19";
+        static constexpr const char* NAME = "GetMemoryDetails";
+    };
+
+    struct IsUserBootloader : BaseRequest {
+        // Common
+        IsUserBootloader() : BaseRequest(IS_USER_BOOTLOADER) {}
+
+        static constexpr const char* VERSION = "0.0.21";
+        static constexpr const char* NAME = "IsUserBootloader";
+    };
 }
 
 
@@ -185,6 +265,12 @@ namespace response {
         GET_BOOTLOADER_CONFIG,
         BOOTLOADER_MEMORY,
         BOOT_APPLICATION,
+        BOOTLOADER_COMMIT,
+        READ_FLASH,
+        APPLICATION_DETAILS,
+        MEMORY_DETAILS,
+        IS_USER_BOOTLOADER,
+        NO_OP,
     };
 
     struct BaseResponse {
@@ -275,6 +361,88 @@ namespace response {
 
         static constexpr const char* VERSION = "0.0.14";
         static constexpr const char* NAME = "BootApplication";
+    };
+
+    // 0.0.18
+    struct BootloaderCommit : BaseResponse {
+        // Common
+        BootloaderCommit() : BaseResponse(BOOTLOADER_COMMIT) {}
+
+        // Data
+        char commitStr[64]{0};
+
+        static constexpr const char* VERSION = "0.0.18";
+        static constexpr const char* NAME = "BootloaderCommit";
+    };
+
+    // 0.0.19
+    struct ReadFlash : BaseResponse {
+        // Common
+        ReadFlash() : BaseResponse(READ_FLASH) {}
+
+        // Data
+        uint32_t success = 0;
+        char errorMsg[64]{0};
+        uint32_t totalSize = 0;
+        uint32_t numPackets = 0;
+
+        static constexpr const char* VERSION = "0.0.19";
+        static constexpr const char* NAME = "ReadFlash";
+    };
+
+
+
+    struct ApplicationDetails : BaseResponse {
+        // Common
+        ApplicationDetails() : BaseResponse(APPLICATION_DETAILS) {}
+
+        // Data
+        uint32_t success = 0;
+        char errorMsg[64]{0};
+        uint32_t hasApplication = 0;
+        uint32_t hasFirmwareVersion = 0;
+        uint32_t hasApplicationName = 0;
+        char firmwareVersionStr[256]{0};
+        char applicationNameStr[4*1024]{0};
+
+        static constexpr const char* VERSION = "0.0.19";
+        static constexpr const char* NAME = "ApplicationVersion";
+    };
+
+
+    struct MemoryDetails : BaseResponse {
+        // Common
+        MemoryDetails() : BaseResponse(MEMORY_DETAILS) {}
+
+        // Data
+        uint32_t hasMemory = 0;
+        Memory memory = Memory::FLASH;
+        int64_t memorySize = 0;
+        char memoryInfo[512]{0};
+
+        static constexpr const char* VERSION = "0.0.19";
+        static constexpr const char* NAME = "MemoryDetails";
+    };
+
+    struct IsUserBootloader : BaseResponse {
+        // Common
+        IsUserBootloader() : BaseResponse(IS_USER_BOOTLOADER) {}
+
+        // Data
+        uint32_t isUserBootloader = 0;
+
+        static constexpr const char* VERSION = "0.0.21";
+        static constexpr const char* NAME = "IsUserBootloader";
+    };
+
+    struct NoOp : BaseResponse {
+        // Common
+        NoOp() : BaseResponse(NO_OP) {}
+        // Data
+        uint32_t invalidOp = 0;
+
+        static constexpr const char* VERSION = "0.0.21";
+        static constexpr const char* NAME = "NO_OP";
     };
 }
 

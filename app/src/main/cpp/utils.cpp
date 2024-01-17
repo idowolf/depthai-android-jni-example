@@ -8,19 +8,8 @@
 #include "utils.h"
 
 
-extern "C" void readModelFromAsset(const char* model_path, std::vector<uint8_t>& model_buf, JNIEnv* env, jobject obj)
+extern "C" void readModelFromAsset(const char* model_path, std::vector<uint8_t>& model_buf, JNIEnv* env, AAssetManager* assetManager)
 {
-    jclass clazz = env->GetObjectClass(obj); // or env->FindClass("com/example/myapp/MainActivity");
-    jmethodID method =
-            env->GetMethodID(clazz, "getAssetManager", "()Landroid/content/res/AssetManager;");
-    jobject jam = env->CallObjectMethod(obj, method);
-
-    AAssetManager *assetManager = nullptr;
-    if(jam)
-    {
-        assetManager = AAssetManager_fromJava(env, jam);
-    }
-
     if (assetManager)
     {
         AAsset* assetDescriptor = AAssetManager_open(assetManager, model_path, AASSET_MODE_BUFFER);

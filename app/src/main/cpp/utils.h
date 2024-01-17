@@ -13,7 +13,7 @@
 #define LOG_TAG "depthaiAndroid"
 #define log(...) __android_log_print(ANDROID_LOG_INFO,LOG_TAG, __VA_ARGS__)
 
-extern "C" void readModelFromAsset(const char* model_path, std::vector<uint8_t>& model_buf, JNIEnv* env, jobject obj);
+extern "C" void readModelFromAsset(const char* model_path, std::vector<uint8_t>& model_buf, JNIEnv* env, AAssetManager* assetManager);
 extern "C" cv::Mat imgframeToCvMat(const std::shared_ptr<dai::ImgFrame>& imgFrame);
 extern "C" int colorDisparity(uint8_t disparity, float max_disparity);
 extern "C" jintArray cvMatToBmpArray(JNIEnv* env, const cv::Mat& input_img);

@@ -13,7 +13,7 @@ using namespace std;
 std::shared_ptr<dai::Device> device;
 shared_ptr<dai::DataOutputQueue> qRgb, qDepth, qDet;
 cv::Mat detection_img;
-
+AAssetManager *mgr = nullptr;
 // Neural network
 std::vector<uint8_t> model_buffer;
 static std::atomic<bool> syncNN{true};
@@ -33,7 +33,7 @@ void deinitializeDevice();
 bool isDeviceConnected();
 
 extern "C"
-JNIEXPORT void JNICALL
+JNIEXPORT jboolean JNICALL
 Java_com_example_depthai_1android_1jni_1example_MainActivity_startDevice(JNIEnv *env, jobject thiz, jstring model_path,
                                                                          int rgbWidth, int rgbHeight) {
     const char *path = env->GetStringUTFChars(model_path, 0);
@@ -42,18 +42,41 @@ Java_com_example_depthai_1android_1jni_1example_MainActivity_startDevice(JNIEnv 
     if (!initializeDevice(env, model_path, rgbWidth, rgbHeight, thiz)) {
         // Handle initialization failure
         log("Failed to initialize the device");
+        return false;
+    }
+    return true;
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_example_depthai_1android_1jni_1example_MainActivity_load(JNIEnv *env, jobject thiz, jobject assetManager) {
+    mgr = AAssetManager_fromJava(env, assetManager);
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_com_example_depthai_1android_1jni_1example_MainActivity_connectDevice(JNIEnv *env, jobject thiz) {
+    try {
+        auto r = libusb_set_option(nullptr, LIBUSB_OPTION_ANDROID_JNIENV, env);
+        log("MYTAG libusb_set_option: %s", libusb_error_name(r));
+        if (r != LIBUSB_SUCCESS) {
+            return JNI_FALSE;
+        }
+        device = std::make_shared<dai::Device>(dai::OpenVINO::VERSION_2021_4, dai::UsbSpeed::HIGH);
+
+        bool oakD = device->getConnectedCameras().size() == 3;
+        return oakD;
+    } catch (const std::exception& e) {
+        log("Exception caught: %s", e.what());
+        return JNI_FALSE;  // Return false if an exception is caught
+    } catch (...) {
+        log("Unknown exception caught");
+        return JNI_FALSE;  // Return false if an unknown exception is caught
     }
 }
 
 bool initializeDevice(JNIEnv* env, jstring modelPath, int rgbWidth, int rgbHeight, jobject thiz) {
     try {
-        // libusb
-        auto r = libusb_set_option(nullptr, LIBUSB_OPTION_ANDROID_JNIENV, env);
-        log("libusb_set_option ANDROID_JAVAVM: %s", libusb_strerror(r));
-
-        // Connect to device and start pipeline
-        device = make_shared<dai::Device>(dai::OpenVINO::VERSION_2021_4, dai::UsbSpeed::HIGH);
-
         bool oakD = device->getConnectedCameras().size() == 3;
 
         // Create pipeline
@@ -79,7 +102,7 @@ bool initializeDevice(JNIEnv* env, jstring modelPath, int rgbWidth, int rgbHeigh
         // Load model blob
         std::vector<uint8_t> model_buf;
         const char * path = env->GetStringUTFChars(modelPath, 0);
-        readModelFromAsset(path, model_buffer, env, thiz);
+        readModelFromAsset(path, model_buffer, env, mgr);
         env->ReleaseStringUTFChars(modelPath, path);
         auto model_blob = dai::OpenVINO::Blob(model_buffer);
 
